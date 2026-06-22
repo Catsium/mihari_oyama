@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "timetable",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["mysite/flask_app.py"],
+      "port": 5000
+    }
+  ]
+}

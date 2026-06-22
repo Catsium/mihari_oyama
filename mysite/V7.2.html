@@ -1,0 +1,2313 @@
+<!DOCTYPE html>
+<html><head>
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta property="og:title" content="Scuffed Timetable">
+  <meta property="og:description" content="A timetable for scuffed to check timetables and stuff, mostly just made for fun">
+  <meta property="og:image" content="https://github.com/user-attachments/assets/eddc2b91-cacb-4054-8d6c-289557e1d15e">
+  <meta property="og:url" content="https://catsium.page.gd/">
+  <meta property="og:type" content="website">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: scroll; } /* always reserve scrollbar space — prevents layout shift when modals open */
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #1a1a1a; }
+
+    /* ── Dark mode smooth transition ── */
+    body.dark-transition, body.dark-transition * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed }
+    th, td { border: 0.5px solid #ddd; padding: 5px 7px; vertical-align: top; font-size: 13px; word-break: break-word }
+    th { background: #f5f5f5; font-weight: 500; font-size: 13px; color: #555; text-align: center }
+
+    .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .tabs { display: flex; margin-left: 8px; gap: 6px; flex-wrap: wrap }
+    .tab { padding: 8px 15px; border-radius: 8px; border: 0.5px solid #ccc; background: #f5f5f5; cursor: pointer; font-size: 13px; font-weight: 500; color: #555 }
+    .tab.active { background: #E6F1FB; color: #0C447C; border-color: #B5D4F4 }
+    .exports { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+    .btn { padding: 8px 16px; border-radius: 8px; border: 0.5px solid #ccc; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; color: #1a1a1a; display: flex; align-items: center; gap: 5px }
+    .btn:hover { background: #f5f5f5 }
+    .btn svg { width: 16px; height: 16px; flex-shrink: 0 }
+    .btn-add { background: #E6F1FB; border-color: #B5D4F4; color: #0C447C; }
+    .btn-add:hover { background: #d5e9fa; }
+    .view { display: none }
+    .view.active { display: block }
+
+    #capture-area { background:#fff; padding:12px; border-radius:8px; border:0.5px solid #e0e0e0 }
+    .legend-row { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap }
+    .leg { padding:4px 12px; border-radius:6px; font-size:13px; font-weight:500 }
+    .tc { background:#f9f9f9; font-size:13px; font-weight:500; color:#888; text-align:right; white-space:nowrap; width:60px }
+    .bl { border-radius:4px; padding:5px 7px; margin:2px 0; font-size:14px; line-height:1.4; display:block }
+    .el { opacity:0.6; font-style:italic }
+    .nm { font-weight:600; font-size:0.85em; display:block; margin-bottom:1px }
+    .note { font-size:10px; color:#888; margin-top:8px; padding:6px 8px; background:#f9f9f9; border-radius:6px }
+    #status { font-size:11px; color:#888 }
+
+    /* ── Modals shared ── */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); z-index:200; overflow-y:auto; padding:20px 10px; }
+    .modal-box { background:#fff; margin:0 auto; max-width:940px; border-radius:12px; padding:24px; border:0.5px solid #e0e0e0; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .modal-title { font-size:14px; font-weight:600; color:#1a1a1a; }
+    .modal-close { background:none; border:none; cursor:pointer; font-size:16px; color:#aaa; line-height:1; padding:4px 8px; border-radius:4px; }
+    .modal-close:hover { background:#f0f0f0; color:#333; }
+    .form-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .form-group { display:flex; flex-direction:column; gap:4px; }
+    .form-group label { font-size:10px; color:#999; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; }
+    .form-input { padding:8px 13px; border:0.5px solid #ccc; border-radius:6px; font-size:13px; outline:none; background:#fff; font-family:Arial,sans-serif; }
+    .form-input:focus { border-color:#B5D4F4; box-shadow:0 0 0 2px rgba(11,68,124,0.07); }
+    .section-label { font-size:11px; font-weight:600; color:#444; margin:14px 0 8px; }
+    .entry-col-header { font-size:9px; color:#bbb; text-transform:uppercase; letter-spacing:0.4px; }
+    .entry-row { display:flex; gap:5px; align-items:center; padding:5px 8px; background:#f9f9f9; border-radius:6px; margin-bottom:5px; }
+    .entry-row input, .entry-row select { padding:6px 7px; border:0.5px solid #ddd; border-radius:4px; font-size:12px; outline:none; background:#fff; font-family:Arial,sans-serif; }
+    .entry-row input:focus, .entry-row select:focus { border-color:#B5D4F4; }
+    .entry-chk { display:flex; align-items:center; gap:3px; font-size:10px; color:#666; white-space:nowrap; }
+    .del-btn { padding:3px 7px; background:#fff0f0; border:0.5px solid #ffcccc; border-radius:4px; color:#c00; cursor:pointer; font-size:11px; flex-shrink:0; line-height:1.4; }
+    .del-btn:hover { background:#ffe0e0; }
+    .add-entry-btn { padding:9px 14px; border:0.5px dashed #bbb; border-radius:6px; background:#fafafa; cursor:pointer; font-size:12px; color:#666; margin-top:6px; width:100%; text-align:left; }
+    .add-entry-btn:hover { background:#f0f0f0; }
+    .save-btn { padding:9px 22px; background:#0C447C; border:none; border-radius:8px; color:#fff; cursor:pointer; font-size:13px; font-weight:600; }
+    .save-btn:hover { background:#0a3a6b; }
+    .cancel-btn { padding:9px 20px; background:#f5f5f5; border:0.5px solid #ccc; border-radius:8px; color:#555; cursor:pointer; font-size:13px; }
+    .cancel-btn:hover { background:#eee; }
+    .info-box { background:#f9f9f9; border-radius:8px; padding:12px; margin-bottom:14px; }
+    .danger-btn { padding:9px 17px; background:#fff0f0; border:0.5px solid #ffcccc; border-radius:8px; color:#c00; cursor:pointer; font-size:13px; margin-right:auto; }
+    .danger-btn:hover { background:#ffe0e0; }
+
+    /* ── Font section ── */
+    .font-row { display:flex; gap:6px; align-items:center; margin-top:10px; }
+    .font-url-input { flex:1; padding:6px 10px; border:0.5px solid #ccc; border-radius:6px; font-size:12px; outline:none; font-family:Arial,sans-serif; min-width:0; }
+    .font-url-input:focus { border-color:#B5D4F4; box-shadow:0 0 0 2px rgba(11,68,124,0.07); }
+    .font-test-btn { padding:6px 12px; border-radius:6px; border:0.5px solid #ccc; background:#fff; cursor:pointer; font-size:12px; font-weight:500; white-space:nowrap; flex-shrink:0; }
+    .font-test-btn:hover { background:#f5f5f5; }
+    .font-test-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .font-clear-btn { padding:6px 10px; border-radius:6px; border:0.5px solid #ffcccc; background:#fff0f0; cursor:pointer; font-size:12px; color:#c00; flex-shrink:0; }
+    .font-clear-btn:hover { background:#ffe0e0; }
+    #font-preview-area { display:none; margin-top:8px; padding:10px 12px; background:#fff; border:0.5px solid #e0e0e0; border-radius:6px; }
+    #font-preview-sample { font-size:15px; margin-bottom:4px; }
+    #font-preview-status { font-size:10px; color:#888; }
+    .font-badge { display:inline-flex; align-items:center; gap:4px; font-size:9px; padding:1px 5px; border-radius:3px; background:#e8f4e8; color:#3a7d3a; border:0.5px solid #b8ddb8; margin-left:4px; vertical-align:middle; }
+
+    /* ── Events modal ── */
+    .event-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#f9f9f9; border-radius:8px; margin-bottom:8px; border-left:3px solid #ccc; }
+    .event-card-body { flex:1; }
+    .event-card-title { font-size:12px; font-weight:600; color:#1a1a1a; }
+    .event-card-date  { font-size:10px; color:#888; margin-top:2px; }
+    .event-card-note  { font-size:11px; color:#555; margin-top:4px; }
+    .event-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; margin-top:2px; }
+    .event-empty { font-size:12px; color:#bbb; text-align:center; padding:24px 0; }
+    .events-add-form { background:#f0f6ff; border-radius:8px; padding:14px; margin-top:14px; border:0.5px solid #d0e4f8; }
+    .interest-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:7px; padding-top:7px; border-top:0.5px solid #eee; }
+    .interest-label { font-size:10px; color:#999; white-space:nowrap; }
+    .interest-name { display:inline-flex; align-items:center; gap:2px; font-size:11px; background:#E6F1FB; color:#0C447C; border-radius:4px; padding:2px 6px; font-weight:500; }
+    .interest-remove { background:none; border:none; cursor:pointer; color:#aaa; font-size:11px; padding:0 0 0 2px; line-height:1; }
+    .interest-remove:hover { color:#c00; }
+    .interest-add-btn { padding:2px 8px; border-radius:5px; border:0.5px solid #B5D4F4; background:#E6F1FB; color:#0C447C; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; }
+    .interest-add-btn:hover { background:#d5e9fa; }
+    .interest-input-wrap { display:none; align-items:center; gap:4px; }
+    .interest-input-wrap.show { display:inline-flex; }
+    .interest-input { padding:3px 7px; border:0.5px solid #B5D4F4; border-radius:4px; font-size:11px; outline:none; width:110px; font-family:Arial,sans-serif; }
+    .interest-ok  { padding:3px 8px; background:#0C447C; border:none; border-radius:4px; color:#fff; cursor:pointer; font-size:11px; font-weight:600; }
+    .interest-cancel { padding:3px 6px; background:#f5f5f5; border:0.5px solid #ccc; border-radius:4px; cursor:pointer; font-size:11px; color:#555; }
+
+    /* ── Placeholder page ── */
+    #placeholder-page { display:none; padding:0.5rem 0; }
+    .ph-header { display:flex; align-items:center; gap:12px; padding:10px 12px; background:#f5f5f5; border-radius:8px; margin-bottom:20px; border:0.5px solid #e0e0e0; }
+    .ph-back-btn { padding:6px 14px; border-radius:8px; border:0.5px solid #ccc; background:#fff; cursor:pointer; font-size:12px; font-weight:500; color:#1a1a1a; display:flex; align-items:center; gap:5px; }
+    .ph-back-btn:hover { background:#eee; }
+    .ph-page-title { font-size:14px; font-weight:600; color:#333; }
+    .ph-content { display:flex; align-items:center; justify-content:center; min-height:300px; border:1.5px dashed #ddd; border-radius:12px; background:#fafafa; }
+    .ph-placeholder-text { text-align:center; color:#bbb; }
+    .ph-placeholder-text p { font-size:18px; font-weight:600; margin-bottom:6px; color:#ccc; }
+    .ph-placeholder-text span { font-size:12px; color:#ddd; }
+
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-4px)} 40%,80%{transform:translateX(4px)} }
+    .shake { animation: shake 0.3s ease; }
+
+    /* ── Modal animations ── */
+    @keyframes overlayIn  { from { opacity:0 } to { opacity:1 } }
+    @keyframes overlayOut { from { opacity:1 } to { opacity:0 } }
+    @keyframes boxIn      { from { opacity:0; transform:translateY(16px) scale(0.97) } to { opacity:1; transform:translateY(0) scale(1) } }
+    @keyframes boxOut     { from { opacity:1; transform:translateY(0) scale(1) } to { opacity:0; transform:translateY(10px) scale(0.97) } }
+    .modal-overlay.anim-in  { animation: overlayIn  0.18s ease forwards; }
+    .modal-overlay.anim-out { animation: overlayOut 0.16s ease forwards; }
+    .modal-overlay.anim-in  .modal-box { animation: boxIn  0.2s cubic-bezier(0.34,1.15,0.64,1) forwards; }
+    .modal-overlay.anim-out .modal-box { animation: boxOut 0.16s ease forwards; }
+
+    /* ── Edit modal mode switch ── */
+    @keyframes sectionIn { from { opacity:0; transform:translateX(10px) } to { opacity:1; transform:translateX(0) } }
+    .section-anim { animation: sectionIn 0.18s ease forwards; }
+
+    /* ── Entry row appear ── */
+    @keyframes rowIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+    .entry-row { animation: rowIn 0.14s ease; }
+
+    /* ── Dark mode ── */
+    body.dark { background:#1a1a1a; color:#e0e0e0; }
+    body.dark th { background:#252525; color:#aaa; }
+    body.dark th, body.dark td { border-color:#3a3a3a; }
+    body.dark .tc { background:#252525; color:#777; }
+    body.dark #capture-area { background:#1e1e1e; border-color:#3a3a3a; }
+    body.dark .tab { background:#252525; border-color:#3a3a3a; color:#aaa; }
+    body.dark .tab.active { background:#1a3555; color:#7ab3e0; border-color:#2e5a8e; }
+    body.dark .btn { background:#252525; border-color:#3a3a3a; color:#e0e0e0; }
+    body.dark .btn:hover { background:#2e2e2e; }
+    body.dark .btn-add { background:#1a3555; border-color:#2e5a8e; color:#7ab3e0; }
+    body.dark .btn-add:hover { background:#1e3e62; }
+    body.dark .modal-box { background:#232323; border-color:#3a3a3a; }
+    body.dark .modal-title { color:#e0e0e0; }
+    body.dark .modal-close { color:#888; }
+    body.dark .modal-close:hover { background:#2e2e2e; color:#ccc; }
+    body.dark .section-label { color:#ccc; }
+    body.dark .form-group label { color:#777; }
+    body.dark .form-input { background:#1a1a1a; border-color:#4a4a4a; color:#e0e0e0; }
+    body.dark .form-input:focus { border-color:#4a82b4; }
+    body.dark .info-box { background:#1e1e1e; }
+    body.dark .entry-row { background:#1e1e1e; }
+    body.dark .entry-row input, body.dark .entry-row select { background:#141414; border-color:#4a4a4a; color:#e0e0e0; }
+    body.dark .entry-chk { color:#aaa; }
+    body.dark .entry-col-header { color:#555; }
+    body.dark .add-entry-btn { background:#1e1e1e; border-color:#4a4a4a; color:#aaa; }
+    body.dark .add-entry-btn:hover { background:#252525; }
+    body.dark .cancel-btn { background:#2a2a2a; border-color:#4a4a4a; color:#ccc; }
+    body.dark .cancel-btn:hover { background:#333; }
+    body.dark .danger-btn { background:#2e1414; border-color:#6a2a2a; color:#ff8888; }
+    body.dark .danger-btn:hover { background:#3a1818; }
+    body.dark .del-btn { background:#2e1414; border-color:#6a2a2a; color:#ff8888; }
+    body.dark .del-btn:hover { background:#3a1818; }
+    body.dark .note { background:#1e1e1e; color:#777; }
+    body.dark .event-card { background:#1e1e1e; }
+    body.dark .event-card-title { color:#e0e0e0; }
+    body.dark .event-card-date { color:#777; }
+    body.dark .event-card-note { color:#aaa; }
+    body.dark .event-empty { color:#555; }
+    body.dark .events-add-form { background:#182433; border-color:#1e3a55; }
+    body.dark .font-url-input { background:#1a1a1a; border-color:#4a4a4a; color:#e0e0e0; }
+    body.dark .font-test-btn { background:#252525; border-color:#4a4a4a; color:#e0e0e0; }
+    body.dark .font-test-btn:hover { background:#2e2e2e; }
+    body.dark .font-clear-btn { background:#2e1414; border-color:#6a2a2a; color:#ff8888; }
+    body.dark .font-clear-btn:hover { background:#3a1818; }
+    body.dark #font-preview-area { background:#1a1a1a; border-color:#3a3a3a; }
+    body.dark .font-badge { background:#1a3520; border-color:#2a5530; color:#7acc7a; }
+    body.dark .gh-status-badge { background:#252525; border-color:#3a3a3a; color:#aaa; }
+    body.dark .gh-status-badge.gh-ok { background:#1a3520; border-color:#2a5530; color:#7acc7a; }
+    body.dark .gh-status-badge.gh-saving { background:#2e2714; border-color:#5a4e1e; color:#ccaa44; }
+    body.dark .gh-status-badge.gh-error { background:#2e1414; border-color:#6a2a2a; color:#ff8888; }
+    body.dark .ph-header { background:#1e1e1e; border-color:#3a3a3a; }
+    body.dark .ph-back-btn { background:#252525; border-color:#4a4a4a; color:#e0e0e0; }
+    body.dark .ph-back-btn:hover { background:#2e2e2e; }
+    body.dark .ph-page-title { color:#ccc; }
+    body.dark .ph-content { background:#141414; border-color:#2a2a2a; }
+
+    /* ── Download dropdown ── */
+    .download-wrap { position:relative; }
+    .btn-download { background:#e8f5e9; border-color:#a5d6a7; color:#2e7d32; }
+    .btn-download:hover { background:#daf0da; }
+    .btn-chevron { width:10px; height:10px; flex-shrink:0; transition:transform 0.2s ease; }
+    .btn-chevron.open { transform:rotate(180deg); }
+    .download-menu { position:absolute; top:calc(100% + 5px); right:0; min-width:170px; background:#fff; border:0.5px solid #a5d6a7; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); padding:4px; z-index:150; opacity:0; transform:translateY(-8px); pointer-events:none; transition:opacity 0.18s ease, transform 0.18s ease; }
+    .download-menu.open { opacity:1; transform:translateY(0); pointer-events:all; }
+    .download-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; font-size:12px; cursor:pointer; color:#2e7d32; font-weight:500; }
+    .download-item:hover { background:#f0faf0; }
+    .download-item svg { width:14px; height:14px; flex-shrink:0; }
+
+    /* ── Server button states ── */
+    #server-btn.srv-ready   { background:#e8f5e9; border-color:#a5d6a7; color:#2e7d32; }
+    #server-btn.srv-saving  { background:#FFF8E1; border-color:#FFD54F; color:#8a6800; }
+    #server-btn.srv-error   { background:#ffebee; border-color:#ffcdd2; color:#c00; }
+
+    /* ── Floating placeholder ── */
+    #floating-placeholder { position:fixed; bottom:20px; right:20px; z-index:100; padding:8px 16px; background:#fff; border:0.5px solid #ccc; border-radius:10px; cursor:pointer; font-size:12px; font-weight:500; display:flex; align-items:center; gap:6px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+    #floating-placeholder:hover { background:#f5f5f5; }
+
+    /* ── Switch buttons inside edit modal ── */
+    .modal-switch-btn { padding:7px 16px; border-radius:6px; border:0.5px solid #B5D4F4; background:#E6F1FB; color:#0C447C; cursor:pointer; font-size:14px; font-weight:600; }
+    .modal-switch-btn:hover { background:#d5e9fa; }
+
+    /* ── Dark mode extras ── */
+    body.dark .download-menu { background:#232323; border-color:#2a5530; }
+    body.dark .download-item { color:#7acc7a; }
+    body.dark .download-item:hover { background:#1a3520; }
+    body.dark .btn-download { background:#1a3520; border-color:#2a5530; color:#7acc7a; }
+    body.dark #server-btn.srv-ready  { background:#1a3520; border-color:#2a5530; color:#7acc7a; }
+    body.dark #server-btn.srv-saving { background:#2e2714; border-color:#5a4e1e; color:#ccaa44; }
+    body.dark #server-btn.srv-error  { background:#2e1414; border-color:#6a2a2a; color:#ff8888; }
+    body.dark #floating-placeholder  { background:#232323; border-color:#3a3a3a; color:#e0e0e0; box-shadow:0 2px 12px rgba(0,0,0,0.4); }
+    body.dark #floating-placeholder:hover { background:#2e2e2e; }
+    body.dark .modal-switch-btn { background:#1a3555; border-color:#2e5a8e; color:#7ab3e0; }
+    body.dark .modal-switch-btn:hover { background:#1e3e62; }
+    body.dark .interest-row { border-top-color:#3a3a3a; }
+    body.dark .interest-label { color:#666; }
+    body.dark .interest-name { background:#1a3555; color:#7ab3e0; }
+    body.dark .interest-add-btn { background:#1a3555; border-color:#2e5a8e; color:#7ab3e0; }
+    body.dark .interest-add-btn:hover { background:#1e3e62; }
+    body.dark .interest-input { background:#1a1a1a; border-color:#4a82b4; color:#e0e0e0; }
+    body.dark .interest-ok { background:#1a4a8a; }
+    body.dark .interest-cancel { background:#2a2a2a; border-color:#4a4a4a; color:#ccc; }
+  </style>
+</head>
+
+<body>
+
+<script id="data-script">
+const data = {
+  "users": {
+    "Catsium": {
+      "colour": "#10579D",
+      "background_colour": "#F7DBE5",
+      "code": "AI And Data",
+      "timetable": [
+        {
+          "day": 1,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "AML",
+          "name": "Applied Machine Learning",
+          "classroom": "S.310 SEG"
+        },
+        {
+          "day": 1,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "CCD",
+          "name": "Cloud Computing Development",
+          "classroom": "S.310 SEG"
+        },
+        {
+          "day": 1,
+          "start": "13.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 1,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "DEP",
+          "name": "Data Engineering Project",
+          "classroom": "S.130A SEG"
+        },
+        {
+          "day": 2,
+          "start": "10.00",
+          "end": "13.00",
+          "code_name": "DPV",
+          "name": "Data Prep & Visualisation",
+          "classroom": "S.310 SEG"
+        },
+        {
+          "day": 2,
+          "start": "13.00",
+          "end": "15.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "15.00",
+          "end": "16.00",
+          "code_name": "EVOGMS",
+          "name": "Evolution of Games",
+          "classroom": "M.414 SDM"
+        },
+        {
+          "day": 2,
+          "start": "16.00",
+          "end": "17.00",
+          "code_name": "GS-UCL",
+          "name": "Understanding Contracts & The Law",
+          "classroom": "LTD-5 SBM"
+        },
+        {
+          "day": 2,
+          "start": "17.00",
+          "end": "18.00",
+          "code_name": "ARTSAP",
+          "name": "Visual Arts Appreciation",
+          "classroom": "N1.813 SDM"
+        },
+        {
+          "day": 3,
+          "start": "10.00",
+          "end": "11.00",
+          "code_name": "PEM (Even)",
+          "name": "Homeroom",
+          "classroom": "S.310 SEG"
+        },
+        {
+          "day": 3,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "AML",
+          "name": "Applied Machine Learning",
+          "classroom": "S.310 SEG"
+        },
+        {
+          "day": 3,
+          "start": "13.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 3,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "DSM",
+          "name": "Data Security & Management",
+          "classroom": "S.342 SEG"
+        },
+        {
+          "day": 4,
+          "start": "13.00",
+          "end": "15.00",
+          "code_name": "ICSD",
+          "name": "Intelligent Control System Dev",
+          "classroom": "R.412 SEG"
+        },
+        {
+          "day": 4,
+          "start": "15.00",
+          "end": "17.00",
+          "code_name": "SDCA",
+          "name": "Sensor Data Collection & Analysis",
+          "classroom": "S.373 SEG"
+        },
+        {
+          "day": 5,
+          "start": "9.00",
+          "end": "10.00",
+          "code_name": "DPV",
+          "name": "Data Prep & Visualisation",
+          "classroom": "E-Learning",
+          "online": true
+        }
+      ]
+    },
+    "Dom": {
+      "colour": "#351E04",
+      "background_colour": "#D3A2F5",
+      "code": "Applied AI",
+      "timetable": [
+        {
+          "day": 1,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "COMT",
+          "name": "Computational Thinking",
+          "classroom": "03-06-50"
+        },
+        {
+          "day": 1,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "SCA",
+          "name": "Sustainability & Climate Action",
+          "classroom": "03-06-50"
+        },
+        {
+          "day": 2,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "COMT",
+          "name": "Computational Thinking",
+          "classroom": "03-06-55"
+        },
+        {
+          "day": 2,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "DAVA",
+          "name": "Data Analytics & Visualization",
+          "classroom": "03-06-55"
+        },
+        {
+          "day": 2,
+          "start": "13.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "14.00",
+          "end": "15.00",
+          "code_name": "Homeroom",
+          "name": "Homeroom",
+          "classroom": ""
+        },
+        {
+          "day": 2,
+          "start": "15.00",
+          "end": "18.00",
+          "code_name": "UXID",
+          "name": "UX & Interface Design",
+          "classroom": "03-08-29/1"
+        },
+        {
+          "day": 3,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "CYFUN",
+          "name": "Cybersecurity Fundamentals",
+          "classroom": "03-07-50"
+        },
+        {
+          "day": 3,
+          "start": "16.00",
+          "end": "18.00",
+          "code_name": "LOMA",
+          "name": "Logic & Mathematics",
+          "classroom": "03-07-50"
+        },
+        {
+          "day": 3,
+          "start": "18.00",
+          "end": "19.00",
+          "code_name": "SCA",
+          "name": "Sustainability & Climate Action",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 4,
+          "start": "8.00",
+          "end": "9.00",
+          "code_name": "LOMA",
+          "name": "Logic & Mathematics",
+          "classroom": "Lecture"
+        },
+        {
+          "day": 4,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "DAVA",
+          "name": "Data Analytics & Visualization",
+          "classroom": "03-08-29"
+        },
+        {
+          "day": 4,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "EPL",
+          "name": "Effective Personal Leadership",
+          "classroom": "03-08-29"
+        },
+        {
+          "day": 4,
+          "start": "18.00",
+          "end": "19.00",
+          "code_name": "EPL",
+          "name": "Effective Personal Leadership",
+          "classroom": "E-Learning",
+          "online": true
+        }
+      ]
+    },
+    "Zathral": {
+      "colour": "#271818",
+      "background_colour": "#90EDE2",
+      "code": "AI And Data",
+      "timetable": [
+        {
+          "day": 1,
+          "start": "10.00",
+          "end": "11.00",
+          "code_name": "COMT",
+          "name": "Data Processing and Visualisation",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 2,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "ICSD",
+          "name": "Intelligent Control Sys Dev",
+          "classroom": "R.412 SEG"
+        },
+        {
+          "day": 2,
+          "start": "11.00",
+          "end": "12.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "12.00",
+          "end": "14.00",
+          "code_name": "DEP",
+          "name": "Data Engineering Project",
+          "classroom": "S.130A SEG"
+        },
+        {
+          "day": 2,
+          "start": "14.00",
+          "end": "15.00",
+          "code_name": "MAPDEV",
+          "name": "Mobile Application Development",
+          "classroom": "L.635 SIT"
+        },
+        {
+          "day": 2,
+          "start": "15.00",
+          "end": "16.00",
+          "code_name": "GSEFX",
+          "name": "Green Screen Effects",
+          "classroom": "N1.507 SDM"
+        },
+        {
+          "day": 2,
+          "start": "16.00",
+          "end": "17.00",
+          "code_name": "EVOGMS",
+          "name": "Evolution of Games",
+          "classroom": "M.414 SDM"
+        },
+        {
+          "day": 3,
+          "start": "11.00",
+          "end": "12.00",
+          "code_name": "PEM (Even)",
+          "name": "Homeroom",
+          "classroom": "S.306 SEG"
+        },
+        {
+          "day": 3,
+          "start": "12.00",
+          "end": "13.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 3,
+          "start": "13.00",
+          "end": "15.00",
+          "code_name": "AML",
+          "name": "Applied Machine Learning",
+          "classroom": "P.507 SEG"
+        },
+        {
+          "day": 3,
+          "start": "15.00",
+          "end": "18.00",
+          "code_name": "DPV",
+          "name": "Data Prep & Visualisation",
+          "classroom": "P.507 SEG"
+        },
+        {
+          "day": 4,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "CCD",
+          "name": "Cloud Computing Development",
+          "classroom": "P.507"
+        },
+        {
+          "day": 4,
+          "start": "13.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 4,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "AML",
+          "name": "Applied Machine Learning",
+          "classroom": "P.507 SEG"
+        },
+        {
+          "day": 5,
+          "start": "8.00",
+          "end": "10.00",
+          "code_name": "SDCA",
+          "name": "Sensor Data Collection & Analysis",
+          "classroom": "S.373 SEG"
+        },
+        {
+          "day": 5,
+          "start": "10.00",
+          "end": "12.00",
+          "code_name": "DSM",
+          "name": "Data Security & Management",
+          "classroom": "S.342 SEG"
+        }
+      ]
+    },
+    "Shadow": {
+      "colour": "#5c4a3d",
+      "background_colour": "#e8d5b7",
+      "code": "Digital Product",
+      "timetable": [
+        {
+          "day": 1,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "AM",
+          "name": "Applied Mechanics",
+          "classroom": "S.522 SEG"
+        },
+        {
+          "day": 1,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "PROG",
+          "name": "Programming",
+          "classroom": "S.558 SEG"
+        },
+        {
+          "day": 2,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "PROG",
+          "name": "Programming",
+          "classroom": "S.558 SEG"
+        },
+        {
+          "day": 2,
+          "start": "13.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "AM",
+          "name": "Applied Mechanics",
+          "classroom": "S.476 SEG"
+        },
+        {
+          "day": 2,
+          "start": "16.00",
+          "end": "17.00",
+          "code_name": "PCS1",
+          "name": "Professional Core Skills",
+          "classroom": "S.476 SEG"
+        },
+        {
+          "day": 2,
+          "start": "17.00",
+          "end": "18.00",
+          "code_name": "PEM (Odd)",
+          "name": "Professional Ethics & Mindset",
+          "classroom": "S.476 SEG"
+        },
+        {
+          "day": 3,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "ADA",
+          "name": "Advanced Data Analysis",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 3,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "ADA",
+          "name": "Advanced Data Analysis",
+          "classroom": "S.521 SEG"
+        },
+        {
+          "day": 3,
+          "start": "16.00",
+          "end": "18.00",
+          "code_name": "ABFC",
+          "name": "Abstract Fundamentals",
+          "classroom": "S.521 SEG"
+        },
+        {
+          "day": 4,
+          "start": "12.00",
+          "end": "15.00",
+          "code_name": "UDWD",
+          "name": "User Design & Web Dev",
+          "classroom": "S.539 SEG"
+        },
+        {
+          "day": 5,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "ABFC",
+          "name": "Abstract Fundamentals",
+          "classroom": "E-Learning",
+          "online": true
+        }
+      ]
+    },
+    "Game": {
+      "colour": "#1e3a5f",
+      "background_colour": "#d4e8f0",
+      "code": "IT",
+      "timetable": [
+        {
+          "day": 1,
+          "start": "14.00",
+          "end": "17.00",
+          "code_name": "BIE",
+          "name": "Biomedical Information Engineering",
+          "classroom": "L.605 SIT"
+        },
+        {
+          "day": 2,
+          "start": "8.00",
+          "end": "9.00",
+          "code_name": "NETWKT",
+          "name": "Network Technology",
+          "classroom": "E-Learning SIT",
+          "online": true
+        },
+        {
+          "day": 2,
+          "start": "9.00",
+          "end": "12.00",
+          "code_name": "PROG",
+          "name": "Programming",
+          "classroom": "L.637 SIT"
+        },
+        {
+          "day": 2,
+          "start": "12.00",
+          "end": "14.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "14.00",
+          "end": "15.00",
+          "code_name": "PEM",
+          "name": "Professional Ethics & Mindset",
+          "classroom": "L.530 SIT"
+        },
+        {
+          "day": 2,
+          "start": "15.00",
+          "end": "16.00",
+          "code_name": "PCS1",
+          "name": "Professional Core Skills",
+          "classroom": "L.530 SIT"
+        },
+        {
+          "day": 2,
+          "start": "16.00",
+          "end": "18.00",
+          "code_name": "AMATHC",
+          "name": "Applied Mathematics & Critical Thinking",
+          "classroom": "L.502 SIT"
+        },
+        {
+          "day": 3,
+          "start": "9.00",
+          "end": "12.00",
+          "code_name": "NETWKT",
+          "name": "Network Technology",
+          "classroom": "L.606 SIT"
+        },
+        {
+          "day": 3,
+          "start": "12.00",
+          "end": "13.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 3,
+          "start": "13.00",
+          "end": "17.00",
+          "code_name": "UXDWD",
+          "name": "UX Design & Web Dev",
+          "classroom": "L.604 SIT"
+        },
+        {
+          "day": 5,
+          "start": "13.00",
+          "end": "14.00",
+          "code_name": "BIE",
+          "name": "Biomedical Information Engineering",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 5,
+          "start": "14.00",
+          "end": "15.00",
+          "code_name": "UXDWD",
+          "name": "UX Design & Web Dev",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 5,
+          "start": "15.00",
+          "end": "16.00",
+          "code_name": "PROG",
+          "name": "Programming",
+          "classroom": "E-Learning",
+          "online": true
+        }
+      ]
+    },
+    "Waffles": {
+      "colour": "#8b5a00",
+      "background_colour": "#fff4e6",
+      "code": "PFP Engineering",
+      "font_url": "",
+      "font_size": 14,
+      "timetable": [
+        {
+          "day": 1,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "ELCOM1",
+          "name": "E-Learning Communication",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 1,
+          "start": "11.00",
+          "end": "13.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 1,
+          "start": "13.00",
+          "end": "15.00",
+          "code_name": "IT110F",
+          "name": "IT Fundamentals",
+          "classroom": "L.631 SIT"
+        },
+        {
+          "day": 1,
+          "start": "15.00",
+          "end": "17.00",
+          "code_name": "PDL",
+          "name": "Professional Development",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 2,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "FG105F",
+          "name": "Front-End Design",
+          "classroom": "G.221 NYP"
+        },
+        {
+          "day": 2,
+          "start": "11.00",
+          "end": "12.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 2,
+          "start": "12.00",
+          "end": "14.00",
+          "code_name": "ELCOM1",
+          "name": "E-Learning Communication",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 3,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "PDL",
+          "name": "Professional Development",
+          "classroom": "S.336 SEG"
+        },
+        {
+          "day": 3,
+          "start": "11.00",
+          "end": "12.00",
+          "name": "🍽 Lunch",
+          "break": true
+        },
+        {
+          "day": 3,
+          "start": "12.00",
+          "end": "14.00",
+          "code_name": "FM1",
+          "name": "Financial Management",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 3,
+          "start": "14.00",
+          "end": "16.00",
+          "code_name": "IT110F",
+          "name": "IT Fundamentals",
+          "classroom": "L.631 SIT"
+        },
+        {
+          "day": 4,
+          "start": "9.00",
+          "end": "11.00",
+          "code_name": "FM1",
+          "name": "Financial Management",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 4,
+          "start": "11.00",
+          "end": "13.00",
+          "code_name": "ELCOM1",
+          "name": "E-Learning Communication",
+          "classroom": "P.504 SEG"
+        },
+        {
+          "day": 5,
+          "start": "8.00",
+          "end": "9.00",
+          "code_name": "ELCOM1",
+          "name": "E-Learning Communication",
+          "classroom": "E-Learning",
+          "online": true
+        },
+        {
+          "day": 5,
+          "start": "10.00",
+          "end": "12.00",
+          "code_name": "FG104F",
+          "name": "",
+          "classroom": "LTQ-10 CILS"
+        }
+      ]
+    }
+  }
+};
+</script>
+
+<!-- ══════════════════════════════════════
+     EDIT / ADD PERSON MODAL (shared)
+════════════════════════════════════════ -->
+<div id="edit-modal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()" style="display: none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="edit-modal-title">✏ Edit Schedule</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="edit-switch-add-btn" class="modal-switch-btn" onclick="switchToAddMode()">+ New Person</button>
+        <button id="edit-switch-edit-btn" class="modal-switch-btn" onclick="switchToEditMode()" style="display:none;">← Back to Edit</button>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+    </div>
+
+    <!-- Person selector — hidden in add mode -->
+    <div id="edit-selector-row" class="form-row" style="margin-bottom: 14px; align-items: center; display: flex;">
+      <div class="form-group">
+        <label>Person</label>
+        <select id="edit-user-select" class="form-input" onchange="loadUserForEdit()" style="min-width:160px"><option value="Catsium">Catsium</option><option value="Dom">Dom</option><option value="Zathral">Zathral</option><option value="Shadow">Shadow</option><option value="Game">Game</option><option value="Waffles">Waffles</option></select>
+      </div>
+      <div id="edit-colour-preview" style="width: 36px; height: 36px; border-radius: 8px; border: 2px solid rgb(139, 90, 0); margin-top: 18px; flex-shrink: 0; background: rgb(255, 244, 230);"></div>
+    </div>
+
+    <!-- Colour preview for add-mode -->
+    <div id="edit-add-preview-row" style="display:none;margin-bottom:14px;">
+      <div id="edit-colour-preview-add" style="width: 36px; height: 36px; border-radius: 8px; border: 2px solid rgb(139, 90, 0); background: rgb(255, 244, 230);"></div>
+    </div>
+
+    <!-- Person info -->
+    <div class="info-box">
+      <div class="section-label" style="margin-top:0">Person Info</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Display Name</label>
+          <input id="edit-username" class="form-input" type="text" placeholder="Name" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label>Course / Programme</label>
+          <input id="edit-code" class="form-input" type="text" placeholder="e.g. AI And Data" style="width:160px">
+        </div>
+        <div class="form-group">
+          <label>Text Colour</label>
+          <input id="edit-colour" class="form-input" type="color" style="width:52px;padding:3px;height:33px;" oninput="updateColourPreview()">
+        </div>
+        <div class="form-group">
+          <label>Background</label>
+          <input id="edit-bg-colour" class="form-input" type="color" style="width:52px;padding:3px;height:33px;" oninput="updateColourPreview()">
+        </div>
+      </div>
+
+      <!-- ── Custom Font ── -->
+      <div style="margin-top:12px;">
+        <div style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px;">
+          Custom Font
+          <span id="font-active-badge" class="font-badge" style="display:none;">✓ Active</span>
+        </div>
+        <div class="font-row">
+          <input id="edit-font-url" class="font-url-input" type="text" placeholder="Paste a .ttf / .woff2 URL — e.g. https://raw.githubusercontent.com/...">
+          <button class="font-test-btn" id="font-test-btn" onclick="testFont()">Test Font</button>
+          <button class="font-clear-btn" onclick="clearFont()" title="Remove custom font">✕</button>
+        </div>
+        <div class="font-row" style="margin-top:6px;align-items:center;gap:8px;">
+          <span style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap;">Font Size</span>
+          <input id="edit-font-size" type="number" min="6" max="60" step="1" class="form-input" style="width:64px;padding:5px 8px;" title="Size in px — default is 14">
+          <span style="font-size:11px;color:#aaa;">px</span>
+          <span style="font-size:10px;color:#ccc;">(default 14)</span>
+        </div>
+        <div id="font-preview-area" style="display: none;">
+          <div id="font-preview-sample"></div>
+          <div id="font-preview-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timetable entries -->
+    <div class="section-label">Timetable Entries</div>
+    <div style="display:flex;gap:5px;padding:0 8px 5px;align-items:center;">
+      <span class="entry-col-header" style="width:52px">Day</span>
+      <span class="entry-col-header" style="width:52px">Start<br><span style="font-weight:400;opacity:0.7">9.00/9.30</span></span>
+      <span class="entry-col-header" style="width:52px">End<br><span style="font-weight:400;opacity:0.7">9.00/9.30</span></span>
+      <span class="entry-col-header" style="width:72px">Code</span>
+      <span class="entry-col-header" style="flex:1">Subject Name</span>
+      <span class="entry-col-header" style="width:110px">Classroom</span>
+      <span class="entry-col-header" style="width:38px">Brk</span>
+      <span class="entry-col-header" style="width:50px">Online</span>
+      <span style="width:28px"></span>
+    </div>
+    <div id="edit-entries-list" style="max-height:260px;overflow-y:auto;"><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(0,'day',parseInt(this.value))">
+        <option value="1" selected="">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="9.00" placeholder="9.00" style="width:52px" oninput="updateEntry(0,'start',this.value)">
+      <input type="text" value="11.00" placeholder="10.00" style="width:52px" oninput="updateEntry(0,'end',this.value)">
+      <input type="text" value="ELCOM1" placeholder="Code" style="width:72px" oninput="updateEntry(0,'code_name',this.value)">
+      <input type="text" value="E-Learning Communication" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(0,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(0,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(0,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(0,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(0)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(1,'day',parseInt(this.value))">
+        <option value="1" selected="">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="11.00" placeholder="9.00" style="width:52px" oninput="updateEntry(1,'start',this.value)">
+      <input type="text" value="13.00" placeholder="10.00" style="width:52px" oninput="updateEntry(1,'end',this.value)">
+      <input type="text" value="" placeholder="Code" style="width:72px" oninput="updateEntry(1,'code_name',this.value)">
+      <input type="text" value="🍽 Lunch" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(1,'name',this.value)">
+      <input type="text" value="" placeholder="Room" style="width:110px" oninput="updateEntry(1,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" checked="" onchange="updateEntry(1,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(1,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(1)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(2,'day',parseInt(this.value))">
+        <option value="1" selected="">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="13.00" placeholder="9.00" style="width:52px" oninput="updateEntry(2,'start',this.value)">
+      <input type="text" value="15.00" placeholder="10.00" style="width:52px" oninput="updateEntry(2,'end',this.value)">
+      <input type="text" value="IT110F" placeholder="Code" style="width:72px" oninput="updateEntry(2,'code_name',this.value)">
+      <input type="text" value="IT Fundamentals" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(2,'name',this.value)">
+      <input type="text" value="L.631 SIT" placeholder="Room" style="width:110px" oninput="updateEntry(2,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(2,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(2,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(2)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(3,'day',parseInt(this.value))">
+        <option value="1" selected="">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="15.00" placeholder="9.00" style="width:52px" oninput="updateEntry(3,'start',this.value)">
+      <input type="text" value="17.00" placeholder="10.00" style="width:52px" oninput="updateEntry(3,'end',this.value)">
+      <input type="text" value="PDL" placeholder="Code" style="width:72px" oninput="updateEntry(3,'code_name',this.value)">
+      <input type="text" value="Professional Development" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(3,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(3,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(3,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(3,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(3)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(4,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2" selected="">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="9.00" placeholder="9.00" style="width:52px" oninput="updateEntry(4,'start',this.value)">
+      <input type="text" value="11.00" placeholder="10.00" style="width:52px" oninput="updateEntry(4,'end',this.value)">
+      <input type="text" value="FG105F" placeholder="Code" style="width:72px" oninput="updateEntry(4,'code_name',this.value)">
+      <input type="text" value="Front-End Design" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(4,'name',this.value)">
+      <input type="text" value="G.221 NYP" placeholder="Room" style="width:110px" oninput="updateEntry(4,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(4,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(4,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(4)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(5,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2" selected="">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="11.00" placeholder="9.00" style="width:52px" oninput="updateEntry(5,'start',this.value)">
+      <input type="text" value="12.00" placeholder="10.00" style="width:52px" oninput="updateEntry(5,'end',this.value)">
+      <input type="text" value="" placeholder="Code" style="width:72px" oninput="updateEntry(5,'code_name',this.value)">
+      <input type="text" value="🍽 Lunch" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(5,'name',this.value)">
+      <input type="text" value="" placeholder="Room" style="width:110px" oninput="updateEntry(5,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" checked="" onchange="updateEntry(5,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(5,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(5)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(6,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2" selected="">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="12.00" placeholder="9.00" style="width:52px" oninput="updateEntry(6,'start',this.value)">
+      <input type="text" value="14.00" placeholder="10.00" style="width:52px" oninput="updateEntry(6,'end',this.value)">
+      <input type="text" value="ELCOM1" placeholder="Code" style="width:72px" oninput="updateEntry(6,'code_name',this.value)">
+      <input type="text" value="E-Learning Communication" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(6,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(6,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(6,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(6,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(6)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(7,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3" selected="">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="9.00" placeholder="9.00" style="width:52px" oninput="updateEntry(7,'start',this.value)">
+      <input type="text" value="11.00" placeholder="10.00" style="width:52px" oninput="updateEntry(7,'end',this.value)">
+      <input type="text" value="PDL" placeholder="Code" style="width:72px" oninput="updateEntry(7,'code_name',this.value)">
+      <input type="text" value="Professional Development" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(7,'name',this.value)">
+      <input type="text" value="S.336 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(7,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(7,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(7,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(7)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(8,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3" selected="">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="11.00" placeholder="9.00" style="width:52px" oninput="updateEntry(8,'start',this.value)">
+      <input type="text" value="12.00" placeholder="10.00" style="width:52px" oninput="updateEntry(8,'end',this.value)">
+      <input type="text" value="" placeholder="Code" style="width:72px" oninput="updateEntry(8,'code_name',this.value)">
+      <input type="text" value="🍽 Lunch" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(8,'name',this.value)">
+      <input type="text" value="" placeholder="Room" style="width:110px" oninput="updateEntry(8,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" checked="" onchange="updateEntry(8,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(8,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(8)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(9,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3" selected="">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="12.00" placeholder="9.00" style="width:52px" oninput="updateEntry(9,'start',this.value)">
+      <input type="text" value="14.00" placeholder="10.00" style="width:52px" oninput="updateEntry(9,'end',this.value)">
+      <input type="text" value="FM1" placeholder="Code" style="width:72px" oninput="updateEntry(9,'code_name',this.value)">
+      <input type="text" value="Financial Management" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(9,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(9,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(9,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(9,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(9)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(10,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3" selected="">Wed</option><option value="4">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="14.00" placeholder="9.00" style="width:52px" oninput="updateEntry(10,'start',this.value)">
+      <input type="text" value="16.00" placeholder="10.00" style="width:52px" oninput="updateEntry(10,'end',this.value)">
+      <input type="text" value="IT110F" placeholder="Code" style="width:72px" oninput="updateEntry(10,'code_name',this.value)">
+      <input type="text" value="IT Fundamentals" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(10,'name',this.value)">
+      <input type="text" value="L.631 SIT" placeholder="Room" style="width:110px" oninput="updateEntry(10,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(10,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(10,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(10)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(11,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4" selected="">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="9.00" placeholder="9.00" style="width:52px" oninput="updateEntry(11,'start',this.value)">
+      <input type="text" value="11.00" placeholder="10.00" style="width:52px" oninput="updateEntry(11,'end',this.value)">
+      <input type="text" value="FM1" placeholder="Code" style="width:72px" oninput="updateEntry(11,'code_name',this.value)">
+      <input type="text" value="Financial Management" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(11,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(11,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(11,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(11,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(11)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(12,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4" selected="">Thu</option><option value="5">Fri</option>
+      </select>
+      <input type="text" value="11.00" placeholder="9.00" style="width:52px" oninput="updateEntry(12,'start',this.value)">
+      <input type="text" value="13.00" placeholder="10.00" style="width:52px" oninput="updateEntry(12,'end',this.value)">
+      <input type="text" value="ELCOM1" placeholder="Code" style="width:72px" oninput="updateEntry(12,'code_name',this.value)">
+      <input type="text" value="E-Learning Communication" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(12,'name',this.value)">
+      <input type="text" value="P.504 SEG" placeholder="Room" style="width:110px" oninput="updateEntry(12,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(12,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(12,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(12)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(13,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5" selected="">Fri</option>
+      </select>
+      <input type="text" value="8.00" placeholder="9.00" style="width:52px" oninput="updateEntry(13,'start',this.value)">
+      <input type="text" value="9.00" placeholder="10.00" style="width:52px" oninput="updateEntry(13,'end',this.value)">
+      <input type="text" value="ELCOM1" placeholder="Code" style="width:72px" oninput="updateEntry(13,'code_name',this.value)">
+      <input type="text" value="E-Learning Communication" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(13,'name',this.value)">
+      <input type="text" value="E-Learning" placeholder="Room" style="width:110px" oninput="updateEntry(13,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(13,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" checked="" onchange="updateEntry(13,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(13)">✕</button>
+    </div><div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(14,'day',parseInt(this.value))">
+        <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5" selected="">Fri</option>
+      </select>
+      <input type="text" value="10.00" placeholder="9.00" style="width:52px" oninput="updateEntry(14,'start',this.value)">
+      <input type="text" value="12.00" placeholder="10.00" style="width:52px" oninput="updateEntry(14,'end',this.value)">
+      <input type="text" value="FG104F" placeholder="Code" style="width:72px" oninput="updateEntry(14,'code_name',this.value)">
+      <input type="text" value="" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(14,'name',this.value)">
+      <input type="text" value="LTQ-10 CILS" placeholder="Room" style="width:110px" oninput="updateEntry(14,'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" onchange="updateEntry(14,'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" onchange="updateEntry(14,'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(14)">✕</button>
+    </div></div>
+    <button class="add-entry-btn" onclick="addEntry()">+ Add Entry</button>
+
+    <!-- Footer -->
+    <div style="display:flex;gap:8px;align-items:center;margin-top:16px;border-top:0.5px solid #eee;padding-top:14px;">
+      <button id="edit-delete-btn" class="danger-btn" onclick="deletePerson()" style="display: inline-flex;">Remove Person</button>
+      <div style="flex:1"></div>
+      <button class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+      <button id="edit-save-btn" class="save-btn" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     EVENTS MODAL
+════════════════════════════════════════ -->
+<div id="events-modal" class="modal-overlay" onclick="if(event.target===this)closeEventsModal()" style="display: none;">
+  <div class="modal-box" style="max-width:660px;">
+    <div class="modal-header">
+      <span class="modal-title">📅 Events</span>
+      <button class="modal-close" onclick="closeEventsModal()">✕</button>
+    </div>
+    <div id="events-list"></div>
+    <div class="events-add-form">
+      <div class="section-label" style="margin-top:0;margin-bottom:12px;">➕ Add New Event</div>
+
+      <!-- Row 1: Title full width -->
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>Title</label>
+        <input id="ev-title" class="form-input" type="text" placeholder="e.g. Group Assignment Due" style="width:100%">
+      </div>
+
+      <!-- Row 2: Date · Start Time · End Time · Colour -->
+      <div class="form-row" style="margin-bottom:10px;gap:8px;">
+        <div class="form-group" style="flex:2;min-width:120px;">
+          <label>Date</label>
+          <input id="ev-date" class="form-input" type="date" style="width:100%">
+        </div>
+        <div class="form-group" style="flex:1.5;min-width:100px;">
+          <label>Start Time <span style="font-weight:400;text-transform:none;color:#bbb;">(optional)</span></label>
+          <input id="ev-time" class="form-input" type="time" style="width:100%">
+        </div>
+        <div class="form-group" style="flex:1.5;min-width:100px;">
+          <label>End Time <span style="font-weight:400;text-transform:none;color:#bbb;">(optional)</span></label>
+          <input id="ev-end-time" class="form-input" type="time" style="width:100%">
+        </div>
+        <div class="form-group" style="flex-shrink:0;">
+          <label>Colour</label>
+          <input id="ev-colour" class="form-input" type="color" value="#0C447C" style="width:52px;padding:4px;height:40px;cursor:pointer;">
+        </div>
+      </div>
+
+      <!-- Row 3: Note full width -->
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Note <span style="font-weight:400;text-transform:none;color:#bbb;">(optional)</span></label>
+        <input id="ev-note" class="form-input" type="text" placeholder="Any extra details…" style="width:100%">
+      </div>
+
+      <button class="save-btn" style="width:100%;" onclick="addEvent()">Add Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SERVER SYNC MODAL
+════════════════════════════════════════ -->
+<div id="server-modal" class="modal-overlay" onclick="if(event.target===this)closeServerModal()" style="display: none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">🔗 Auto-Save Server Settings</span>
+      <button class="modal-close" onclick="closeServerModal()">✕</button>
+    </div>
+    <p style="font-size:11px;color:#888;margin-bottom:14px;line-height:1.6;">
+      After every edit the timetable is automatically saved to your Python server so the live site updates instantly.<br>
+      Your token is only stored in this browser's localStorage.
+    </p>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Server URL</label>
+      <input id="srv-url" class="form-input" type="text" placeholder="https://yourname.pythonanywhere.com" style="width:100%">
+    </div>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>Save Token (the secret you set in the server)</label>
+      <input id="srv-token" class="form-input" type="password" placeholder="your-secret-token" style="width:100%">
+    </div>
+    <div id="srv-test-result" style="display: block; background: rgb(232, 245, 233); color: rgb(46, 125, 50); font-size: 11px; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px;">✓ Connected — server is reachable and the token is correct!</div>
+    <div style="display:flex;gap:8px;align-items:center;border-top:0.5px solid #eee;padding-top:14px;">
+      <button id="srv-test-btn" class="cancel-btn" onclick="testServerConnection()" style="background:#f0f6ff;border-color:#d0e4f8;color:#0C447C;">Test Connection</button>
+      <div style="flex:1"></div>
+      <button class="cancel-btn" onclick="closeServerModal()">Cancel</button>
+      <button class="save-btn" onclick="saveServerConfig()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MAIN VIEW
+════════════════════════════════════════ -->
+<div id="main-view" style="padding:0.5rem 0">
+
+  <div class="toolbar">
+    <div class="tabs" id="list_names"><div class="tab active" onclick="updateButton(this)">All</div><div class="tab active" onclick="updateButton(this)"> Catsium </div><div class="tab active" onclick="updateButton(this)"> Dom </div><div class="tab active" onclick="updateButton(this)"> Zathral </div><div class="tab active" onclick="updateButton(this)"> Shadow </div><div class="tab active" onclick="updateButton(this)"> Game </div><div class="tab active" onclick="updateButton(this)"> Waffles </div></div>
+    <div class="exports">
+      <!-- Edit (combined — blue) -->
+      <button class="btn btn-add" onclick="openEditModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2l3 3-8 8H3v-3L11 2z"/><path d="M9 4l3 3"/></svg>Edit
+      </button>
+      <!-- Events -->
+      <button class="btn" onclick="openEventsModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 1v3M11 1v3M2 6h12"/><path d="M5 9h1M8 9h1M11 9h1M5 12h1M8 12h1"/></svg>Events
+      </button>
+      <!-- Download dropdown (green) -->
+      <div class="download-wrap" id="download-wrap">
+        <button class="btn btn-download" onclick="toggleDownloadMenu(event)" id="download-btn">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3"/><rect x="2" y="11" width="12" height="3" rx="1"/></svg>Download
+          <svg class="btn-chevron" id="download-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="download-menu" id="download-menu">
+          <div class="download-item" onclick="exportAsPage();closeDownloadMenu()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1"/><path d="M5 5h6M5 8h4"/><path d="M8 11v3M6 12l2 2 2-2"/></svg>Export Page (.html)
+          </div>
+          <div class="download-item" onclick="exportPNG();closeDownloadMenu()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="10" rx="1"/><path d="M2 9l3-3 3 3 2-2 4 3"/><circle cx="11" cy="5" r="1" fill="currentColor" stroke="none"/></svg>Save as PNG
+          </div>
+          <div class="download-item" onclick="exportPDF();closeDownloadMenu()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>Save as PDF
+          </div>
+        </div>
+      </div>
+      <!-- Dark/Light -->
+      <button class="btn" id="darkmode-btn" onclick="toggleDarkMode()" title="Toggle dark mode">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1z"/><path d="M8 1c-1.5 2-1.5 10 0 14"/><path d="M1 8h14"/></svg><span id="darkmode-label">Dark</span>
+      </button>
+      <!-- Server (combined with status) -->
+      <button class="btn" id="server-btn" onclick="openServerModal()" title="Configure auto-save server">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="4" rx="1"/><rect x="1" y="10" width="14" height="4" rx="1"/><circle cx="13" cy="4" r="0.8" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg><span id="server-btn-label">Server</span>
+      </button>
+      <!-- Reset -->
+      <button class="btn" onclick="resetToDefaults()" title="Reset to default data" style="color:#999;">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8a6 6 0 1 0 1.5-4L2 2v4h4"/></svg>Reset
+      </button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <div id="capture-area">
+    <div class="legend-row" id="list_colour"><span class="leg" style="background:#F7DBE5;color:#10579D;">Catsium (AI And Data)</span><span class="leg" style="background:#D3A2F5;color:#351E04;">Dom (Applied AI)</span><span class="leg" style="background:#90EDE2;color:#271818;">Zathral (AI And Data)</span><span class="leg" style="background:#e8d5b7;color:#5c4a3d;">Shadow (Digital Product)</span><span class="leg" style="background:#d4e8f0;color:#1e3a5f;">Game (IT)</span><span class="leg" style="background:#fff4e6;color:#8b5a00;">Waffles (PFP Engineering)</span></div>
+    <div class="view active" id="view-all">
+      <div style="overflow-x:auto"><table>
+        <thead>
+          <tr>
+            <th class="tc">Time</th>
+            <th>Monday</th>
+            <th>Tuesday</th>
+            <th>Wednesday</th>
+            <th>Thursday</th>
+            <th>Friday</th>
+          </tr>
+        </thead>
+        <tbody id="timetable"><tr><td class="tc">8:00</td><td></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology (E-Learning SIT)</span></td><td></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · Lecture</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl el" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication (E-Learning)</span></td></tr><tr><td class="tc">8:30</td><td></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology (E-Learning SIT)</span></td><td></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · Lecture</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl el" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication (E-Learning)</span></td></tr><tr><td class="tc">9:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.522 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · ICSD</span>Intelligent Control Sys Dev · R.412 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG105F</span>Front-End Design · G.221 NYP</span></td><td><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis (E-Learning)</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · S.336 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-08-29</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span></td><td><span class="bl el" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation (E-Learning)</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals (E-Learning)</span></td></tr><tr><td class="tc">9:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.522 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · ICSD</span>Intelligent Control Sys Dev · R.412 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG105F</span>Front-End Design · G.221 NYP</span></td><td><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis (E-Learning)</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · S.336 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-08-29</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span></td><td><span class="bl el" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation (E-Learning)</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals (E-Learning)</span></td></tr><tr><td class="tc">10:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-50</span><span class="bl el" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · COMT</span>Data Processing and Visualisation (E-Learning)</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.522 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · ICSD</span>Intelligent Control Sys Dev · R.412 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG105F</span>Front-End Design · G.221 NYP</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · PEM (Even)</span>Homeroom · S.310 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis (E-Learning)</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · S.336 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-08-29</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals (E-Learning)</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG104F</span> · LTQ-10 CILS</span></td></tr><tr><td class="tc">10:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-50</span><span class="bl el" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · COMT</span>Data Processing and Visualisation (E-Learning)</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.522 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · COMT</span>Computational Thinking · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · ICSD</span>Intelligent Control Sys Dev · R.412 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG105F</span>Front-End Design · G.221 NYP</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · PEM (Even)</span>Homeroom · S.310 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis (E-Learning)</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · S.336 SEG</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-08-29</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl el" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals (E-Learning)</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG104F</span> · LTQ-10 CILS</span></td></tr><tr><td class="tc">11:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · CCD</span>Cloud Computing Development · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-06-55</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral, Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · PEM (Even)</span>Homeroom · S.306 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership · 03-08-29</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · CCD</span>Cloud Computing Development · P.507</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG104F</span> · LTQ-10 CILS</span></td></tr><tr><td class="tc">11:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · CCD</span>Cloud Computing Development · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-06-55</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming · L.637 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral, Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · PEM (Even)</span>Homeroom · S.306 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · NETWKT</span>Network Technology · L.606 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership · 03-08-29</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · CCD</span>Cloud Computing Development · P.507</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FG104F</span> · LTQ-10 CILS</span></td></tr><tr><td class="tc">12:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · CCD</span>Cloud Computing Development · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral, Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership · 03-08-29</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · CCD</span>Cloud Computing Development · P.507</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td></td></tr><tr><td class="tc">12:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · CCD</span>Cloud Computing Development · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action · 03-06-50</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Waffles</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DPV</span>Data Prep &amp; Visualisation · S.310 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · DAVA</span>Data Analytics &amp; Visualization · 03-06-55</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PROG</span>Programming · S.558 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · AML</span>Applied Machine Learning · S.310 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral, Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership · 03-08-29</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · CCD</span>Cloud Computing Development · P.507</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span></td><td></td></tr><tr><td class="tc">13:00</td><td><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium, Dom, Shadow, Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ICSD</span>Intelligent Control System Dev · R.412 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral</span>🍽 Lunch</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering (E-Learning)</span></td></tr><tr><td class="tc">13:30</td><td><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · ELCOM1</span>E-Learning Communication · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium, Dom, Shadow, Game</span>🍽 Lunch</span></td><td><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · FM1</span>Financial Management · P.504 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ICSD</span>Intelligent Control System Dev · R.412 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Zathral</span>🍽 Lunch</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering (E-Learning)</span></td></tr><tr><td class="tc">14:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · Homeroom</span>Homeroom · </span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · MAPDEV</span>Mobile Application Development · L.635 SIT</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PEM</span>Professional Ethics &amp; Mindset · L.530 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · CYFUN</span>Cybersecurity Fundamentals · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ICSD</span>Intelligent Control System Dev · R.412 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev (E-Learning)</span></td></tr><tr><td class="tc">14:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · Homeroom</span>Homeroom · </span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · MAPDEV</span>Mobile Application Development · L.635 SIT</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PEM</span>Professional Ethics &amp; Mindset · L.530 SIT</span><span class="bl" style="background:#F0F0F0;color:#999"><span class="nm">Catsium</span>🍽 Lunch</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · CYFUN</span>Cybersecurity Fundamentals · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ICSD</span>Intelligent Control System Dev · R.412 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · UDWD</span>User Design &amp; Web Dev · S.539 SEG</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev (E-Learning)</span></td></tr><tr><td class="tc">15:00</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · EVOGMS</span>Evolution of Games · M.414 SDM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · GSEFX</span>Green Screen Effects · N1.507 SDM</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PCS1</span>Professional Core Skills · L.530 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · CYFUN</span>Cybersecurity Fundamentals · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming (E-Learning)</span></td></tr><tr><td class="tc">15:30</td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DEP</span>Data Engineering Project · S.130A SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · EVOGMS</span>Evolution of Games · M.414 SDM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · GSEFX</span>Green Screen Effects · N1.507 SDM</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · AM</span>Applied Mechanics · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PCS1</span>Professional Core Skills · L.530 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · DSM</span>Data Security &amp; Management · S.342 SEG</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · CYFUN</span>Cybersecurity Fundamentals · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ADA</span>Advanced Data Analysis · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · IT110F</span>IT Fundamentals · L.631 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · AML</span>Applied Machine Learning · P.507 SEG</span></td><td><span class="bl el" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · PROG</span>Programming (E-Learning)</span></td></tr><tr><td class="tc">16:00</td><td><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · GS-UCL</span>Understanding Contracts &amp; The Law · LTD-5 SBM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · EVOGMS</span>Evolution of Games · M.414 SDM</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PCS1</span>Professional Core Skills · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · AMATHC</span>Applied Mathematics &amp; Critical Thinking · L.502 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span></td><td></td></tr><tr><td class="tc">16:30</td><td><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · BIE</span>Biomedical Information Engineering · L.605 SIT</span><span class="bl" style="background:#fff4e6;color:#8b5a00;"><span class="nm">Waffles · PDL</span>Professional Development · P.504 SEG</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · GS-UCL</span>Understanding Contracts &amp; The Law · LTD-5 SBM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · EVOGMS</span>Evolution of Games · M.414 SDM</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PCS1</span>Professional Core Skills · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · AMATHC</span>Applied Mathematics &amp; Critical Thinking · L.502 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals · S.521 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · UXDWD</span>UX Design &amp; Web Dev · L.604 SIT</span></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · SDCA</span>Sensor Data Collection &amp; Analysis · S.373 SEG</span></td><td></td></tr><tr><td class="tc">17:00</td><td></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ARTSAP</span>Visual Arts Appreciation · N1.813 SDM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PEM (Odd)</span>Professional Ethics &amp; Mindset · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · AMATHC</span>Applied Mathematics &amp; Critical Thinking · L.502 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals · S.521 SEG</span></td><td></td><td></td></tr><tr><td class="tc">17:30</td><td></td><td><span class="bl" style="background:#F7DBE5;color:#10579D;"><span class="nm">Catsium · ARTSAP</span>Visual Arts Appreciation · N1.813 SDM</span><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · UXID</span>UX &amp; Interface Design · 03-08-29/1</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · PEM (Odd)</span>Professional Ethics &amp; Mindset · S.476 SEG</span><span class="bl" style="background:#d4e8f0;color:#1e3a5f;"><span class="nm">Game · AMATHC</span>Applied Mathematics &amp; Critical Thinking · L.502 SIT</span></td><td><span class="bl" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · LOMA</span>Logic &amp; Mathematics · 03-07-50</span><span class="bl" style="background:#90EDE2;color:#271818;"><span class="nm">Zathral · DPV</span>Data Prep &amp; Visualisation · P.507 SEG</span><span class="bl" style="background:#e8d5b7;color:#5c4a3d;"><span class="nm">Shadow · ABFC</span>Abstract Fundamentals · S.521 SEG</span></td><td></td><td></td></tr><tr><td class="tc">18:00</td><td></td><td></td><td><span class="bl el" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action (E-Learning)</span></td><td><span class="bl el" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership (E-Learning)</span></td><td></td></tr><tr><td class="tc">18:30</td><td></td><td></td><td><span class="bl el" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · SCA</span>Sustainability &amp; Climate Action (E-Learning)</span></td><td><span class="bl el" style="background:#D3A2F5;color:#351E04;"><span class="nm">Dom · EPL</span>Effective Personal Leadership (E-Learning)</span></td><td></td></tr></tbody>
+      </table></div>
+      <p class="note">Site made by Catsium, Sampleless, and Zathral</p>
+    </div>
+  </div>
+</div>
+
+<!-- Floating placeholder button (fixed bottom-right) -->
+<button id="floating-placeholder" onclick="goToPlaceholder()">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M5 8h6M8 5v6"/></svg>Placeholder
+</button>
+
+<!-- ══════════════════════════════════════
+     PLACEHOLDER PAGE
+════════════════════════════════════════ -->
+<div id="placeholder-page">
+  <div class="ph-header">
+    <button class="ph-back-btn" onclick="goBack()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"></path></svg>
+      Back to Timetable
+    </button>
+    <span class="ph-page-title">Placeholder Page</span>
+  </div>
+  <div class="ph-content">
+    <div class="ph-placeholder-text">
+      <p>Placeholder</p>
+      <span>This page is reserved for future content.</span>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+// ── Visibility init (applied to default data before storage may override) ──
+for (let u in data.users) data.users[u].visibility = true;
+
+// ══════════════════════════════════════════
+// FONT SYSTEM
+// ══════════════════════════════════════════
+const loadedFonts = {}; // username -> CSS font-family name currently loaded
+
+function fontFamilyName(username) {
+  return 'uf-' + username.replace(/[^a-zA-Z0-9]/g, '-');
+}
+
+async function loadUserFont(username, fontUrl) {
+  if (!fontUrl) {
+    delete loadedFonts[username];
+    return;
+  }
+  const family = fontFamilyName(username);
+  try {
+    const face = new FontFace(family, `url("${fontUrl}")`);
+    await face.load();
+    document.fonts.add(face);
+    loadedFonts[username] = family;
+  } catch(e) {
+    console.warn(`Font load failed for ${username}:`, e.message);
+    delete loadedFonts[username];
+  }
+}
+
+async function loadAllFonts() {
+  const tasks = [];
+  for (const u in data.users) {
+    if (data.users[u].font_url) tasks.push(loadUserFont(u, data.users[u].font_url));
+  }
+  if (tasks.length) await Promise.all(tasks);
+}
+
+// ── Font UI in edit modal ──
+async function testFont() {
+  const url  = document.getElementById('edit-font-url').value.trim();
+  const btn  = document.getElementById('font-test-btn');
+  const area = document.getElementById('font-preview-area');
+  const samp = document.getElementById('font-preview-sample');
+  const stat = document.getElementById('font-preview-status');
+
+  if (!url) { area.style.display = 'none'; return; }
+
+  btn.textContent = 'Loading…';
+  btn.disabled = true;
+
+  const tempFamily = 'preview-font-modal';
+  try {
+    const face = new FontFace(tempFamily, `url("${url}")`);
+    await face.load();
+    // Replace any old preview face
+    document.fonts.forEach(f => { if (f.family === tempFamily) document.fonts.delete(f); });
+    document.fonts.add(face);
+
+    const name = document.getElementById('edit-username').value.trim() || 'Person';
+    const fg   = document.getElementById('edit-colour').value;
+    const bg   = document.getElementById('edit-bg-colour').value;
+
+    const previewSize = parseInt(document.getElementById('edit-font-size').value, 10) || 14;
+    samp.style.fontFamily = `'${tempFamily}', sans-serif`;
+    samp.style.fontSize   = previewSize + 'px';
+    samp.innerHTML = `<span style="background:${bg};color:${fg};padding:3px 8px;border-radius:4px;display:inline-block;">`
+      + `${escQ(name)} · The quick brown fox jumps over the lazy dog · 0123456789</span>`;
+    stat.style.color = '#2a7a2a';
+    stat.textContent = 'Font loaded successfully — click Save Changes to apply.';
+  } catch(e) {
+    samp.innerHTML = '';
+    stat.style.color = '#c00';
+    stat.textContent = 'Could not load font. Make sure the URL points directly to a .ttf or .woff2 file and allows cross-origin access.';
+  }
+
+  area.style.display = 'block';
+  btn.textContent = 'Test Font';
+  btn.disabled = false;
+}
+
+function clearFont() {
+  document.getElementById('edit-font-url').value = '';
+  document.getElementById('font-preview-area').style.display = 'none';
+  document.getElementById('font-active-badge').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+// TOOLBAR
+// ══════════════════════════════════════════
+function updateToolbar() {
+  let html = `<div class="tab active" onclick="updateButton(this)">All</div>`;
+  for (let u in data.users)
+    html += `<div class="tab active" onclick="updateButton(this)"> ${u} </div>`;
+  document.getElementById('list_names').innerHTML = html;
+}
+
+// ── Dark-mode colour adaptation ──
+function adaptColorDark(hex, type) {
+  if (!hex || !hex.startsWith('#')) return hex;
+  let h = hex.slice(1);
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  if (h.length !== 6) return hex;
+  const r=parseInt(h.slice(0,2),16)/255, g=parseInt(h.slice(2,4),16)/255, b=parseInt(h.slice(4,6),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let hue=0, sat=0, lit=(max+min)/2;
+  if (max!==min) {
+    const d=max-min;
+    sat=lit>0.5?d/(2-max-min):d/(max+min);
+    if(max===r) hue=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g) hue=((b-r)/d+2)/6;
+    else hue=((r-g)/d+4)/6;
+  }
+  lit = type==='bg' ? 0.22 : 0.80;
+  const q=lit<0.5?lit*(1+sat):lit+sat-lit*sat, p=2*lit-q;
+  const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+  const [ro,go,bo]=sat===0?[lit,lit,lit]:[hue2rgb(p,q,hue+1/3),hue2rgb(p,q,hue),hue2rgb(p,q,hue-1/3)];
+  return '#'+[ro,go,bo].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');
+}
+
+// ── Legend ──
+function updateColour() {
+  const dark = document.body.classList.contains('dark');
+  let html = '';
+  for (let u in data.users) {
+    const usr = data.users[u];
+    if (!usr.visibility) continue;
+    const ff = loadedFonts[u] ? `font-family:'${loadedFonts[u]}',sans-serif;` : '';
+    const fs = usr.font_size && usr.font_size !== 14 ? `font-size:${usr.font_size}px;` : '';
+    const bg = dark ? adaptColorDark(usr.background_colour, 'bg') : usr.background_colour;
+    const fg = dark ? adaptColorDark(usr.colour, 'fg') : usr.colour;
+    html += `<span class="leg" style="background:${bg};color:${fg};${ff}${fs}">${u} (${usr.code})</span>`;
+  }
+  document.getElementById('list_colour').innerHTML = html;
+}
+
+// ── Time helpers (supports X.00 and X.30 notation) ──
+function parseTime(t) {
+  const parts = String(t).split('.');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1] || '0', 10);
+  return h + (m >= 30 ? 0.5 : 0);
+}
+function displayTime(t) {
+  const h = Math.floor(t);
+  return t % 1 === 0 ? `${h}:00` : `${h}:30`;
+}
+
+// ── Timetable ──
+function buildTimeSlots() {
+  let gStart = Infinity, gEnd = 0;
+  const halfStarts = new Set();
+  for (const u in data.users) {
+    if (!data.users[u].visibility) continue;
+    for (const e of data.users[u].timetable) {
+      const s = parseTime(e.start), en = parseTime(e.end);
+      if (s < gStart) gStart = s;
+      if (en > gEnd)  gEnd   = en;
+      if (s % 1 !== 0) halfStarts.add(s);
+    }
+  }
+  if (gStart === Infinity) return [];
+  const slots = [];
+  for (let h = Math.floor(gStart); h < gEnd; h++) {
+    if (h >= gStart) slots.push(h);
+    const half = Math.round((h + 0.5) * 10) / 10;
+    if (half >= gStart && half < gEnd && halfStarts.has(half)) slots.push(half);
+  }
+  return slots;
+}
+
+function updateTimetable() {
+  let html = '';
+  const slots = buildTimeSlots();
+  const dark  = document.body.classList.contains('dark');
+  if (!slots.length) { document.getElementById('timetable').innerHTML = ''; return; }
+  for (const i of slots) {
+    html += `<tr><td class="tc">${displayTime(i)}</td>`;
+    for (let j = 1; j <= 5; j++) {
+      html += `<td>`;
+      let lunch = '';
+      for (let u in data.users) {
+        if (!data.users[u].visibility) continue;
+        const usr = data.users[u];
+        const ff  = loadedFonts[u] ? `font-family:'${loadedFonts[u]}',sans-serif;` : '';
+        const fs  = usr.font_size && usr.font_size !== 14 ? `font-size:${usr.font_size}px;` : '';
+        const bg  = dark ? adaptColorDark(usr.background_colour, 'bg') : usr.background_colour;
+        const fg  = dark ? adaptColorDark(usr.colour, 'fg') : usr.colour;
+        for (let e of usr.timetable) {
+          if (parseTime(e.start) <= i && parseTime(e.end) > i && e.day === j) {
+            if (e.break) {
+              if (lunch) lunch += ', ';
+              lunch += u;
+            } else if (e.online) {
+              html += `<span class="bl el" style="background:${bg};color:${fg};${ff}${fs}"><span class="nm">${u} · ${e.code_name}</span>${e.name} (${e.classroom})</span>`;
+            } else {
+              html += `<span class="bl" style="background:${bg};color:${fg};${ff}${fs}"><span class="nm">${u} · ${e.code_name}</span>${e.name} · ${e.classroom}</span>`;
+            }
+          }
+        }
+      }
+      const lunchBg = dark ? '#2a2a2a' : '#F0F0F0';
+      const lunchFg = dark ? '#777' : '#999';
+      if (lunch) html += `<span class="bl" style="background:${lunchBg};color:${lunchFg}"><span class="nm">${lunch}</span>🍽 Lunch</span>`;
+      html += `</td>`;
+    }
+    html += `</tr>`;
+  }
+  document.getElementById('timetable').innerHTML = html;
+}
+
+// ── Tab toggle ──
+function updateButton(btn) {
+  const name = btn.textContent.trim();
+  if (name === 'All') {
+    const active = btn.classList.contains('active');
+    document.querySelectorAll('.tab').forEach(t => active ? t.classList.remove('active') : t.classList.add('active'));
+    for (let u in data.users) data.users[u].visibility = !active;
+  } else {
+    const allBtn = Array.from(document.querySelectorAll('#list_names .tab')).find(b => b.textContent.trim() === 'All');
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      allBtn.classList.remove('active');
+      data.users[name].visibility = false;
+    } else {
+      btn.classList.add('active');
+      data.users[name].visibility = true;
+      if (Object.values(data.users).every(u => u.visibility)) allBtn.classList.add('active');
+    }
+  }
+  updateColour();
+  updateTimetable();
+}
+
+// ── Page navigation ──
+function goToPlaceholder() {
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('placeholder-page').style.display = 'block';
+}
+function goBack() {
+  document.getElementById('placeholder-page').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+}
+
+// ── Download dropdown ──
+function toggleDownloadMenu(e) {
+  e.stopPropagation();
+  const menu    = document.getElementById('download-menu');
+  const chevron = document.getElementById('download-chevron');
+  const isOpen  = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+function closeDownloadMenu() {
+  document.getElementById('download-menu')?.classList.remove('open');
+  document.getElementById('download-chevron')?.classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('download-wrap');
+  if (wrap && !wrap.contains(e.target)) closeDownloadMenu();
+});
+
+// ── Dark mode ──
+function toggleDarkMode() {
+  document.body.classList.add('dark-transition');
+  const dark = document.body.classList.toggle('dark');
+  document.getElementById('darkmode-label').textContent = dark ? 'Light' : 'Dark';
+  try { localStorage.setItem('scuffed_dark', dark ? '1' : '0'); } catch(e) {}
+  updateColour();
+  updateTimetable();
+  setTimeout(() => document.body.classList.remove('dark-transition'), 350);
+}
+
+function loadDarkMode() {
+  // Default to dark mode — only use light if user explicitly chose it
+  const pref = localStorage.getItem('scuffed_dark');
+  const isDark = pref !== '0';
+  if (isDark) {
+    document.body.classList.add('dark');
+    const lbl = document.getElementById('darkmode-label');
+    if (lbl) lbl.textContent = 'Light';
+  }
+}
+
+// ── Animated modal helpers ──
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.classList.remove('anim-out');
+  el.classList.add('anim-in');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('anim-in');
+  el.classList.add('anim-out');
+  setTimeout(() => {
+    el.style.display = 'none';
+    el.classList.remove('anim-out');
+  }, 160);
+}
+
+// ── Status helper ──
+function setStatus(msg, t) {
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  if (t) setTimeout(() => s.textContent = '', t);
+}
+
+function resetToDefaults() {
+  if (!confirm('Reset all data back to defaults? This will remove any edits, added people, and custom fonts.')) return;
+  location.reload();
+}
+
+// ── Export PNG ──
+function exportPNG() {
+  setStatus('Generating...');
+  html2canvas(document.getElementById('capture-area'), {scale:2, backgroundColor:'#ffffff'}).then(c => {
+    const a = document.createElement('a');
+    a.download = 'group_schedule.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+    setStatus('Downloaded!', 2500);
+  }).catch(() => setStatus('Error, try again', 2500));
+}
+
+// ── Export Page (bakes current state into a downloadable HTML file) ──
+function exportAsPage() {
+  // Strip runtime-only 'visibility' flag from users before baking
+  const exportUsers = {};
+  for (const u in data.users) {
+    const { visibility, ...rest } = data.users[u];
+    exportUsers[u] = rest;
+  }
+
+  let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+  // Replace data script content using its id
+  html = html.replace(
+    /(<script[^>]*id="data-script"[^>]*>)([\s\S]*?)(<\/script>)/,
+    `$1\nconst data = ${JSON.stringify({ users: exportUsers }, null, 2)};\n$3`
+  );
+
+  // Bake current events array if any exist
+  if (events.length > 0) {
+    html = html.replace(
+      /let events = \[\];/,
+      `let events = ${JSON.stringify(events)};`
+    );
+  }
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.download = 'timetable.html';
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setStatus('Page exported!', 2500);
+}
+
+// ── Export PDF ──
+function exportPDF() {
+  setStatus('Generating PDF...');
+  html2canvas(document.getElementById('capture-area'), {scale:2, backgroundColor:'#ffffff'}).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const mmW = canvas.width  * 25.4 / 192;
+    const mmH = canvas.height * 25.4 / 192;
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: mmW > mmH ? 'l' : 'p', unit: 'mm', format: [mmW, mmH] });
+    pdf.addImage(imgData, 'PNG', 0, 0, mmW, mmH);
+    pdf.save('group_schedule.pdf');
+    setStatus('Downloaded!', 2500);
+  }).catch(e => { console.error(e); setStatus('Error, try again', 2500); });
+}
+
+// ══════════════════════════════════════════
+// SERVER AUTO-SYNC
+// ══════════════════════════════════════════
+let serverConfig = { url: '', token: '' };
+const SRV_CONFIG_KEY = 'scuffed_server_config';
+
+function loadServerConfig() {
+  try {
+    const raw = localStorage.getItem(SRV_CONFIG_KEY);
+    if (raw) Object.assign(serverConfig, JSON.parse(raw));
+  } catch(e) {}
+  updateSrvBadge();
+}
+
+function updateSrvBadge() {
+  const btn = document.getElementById('server-btn');
+  const lbl = document.getElementById('server-btn-label');
+  if (!btn || !lbl) return;
+  btn.className = 'btn';
+  if (serverConfig.url && serverConfig.token) {
+    btn.classList.add('srv-ready');
+    lbl.textContent = 'Server ✓';
+  } else {
+    lbl.textContent = 'Server';
+  }
+}
+
+function openServerModal() {
+  document.getElementById('srv-url').value   = serverConfig.url;
+  document.getElementById('srv-token').value = serverConfig.token;
+  document.getElementById('srv-test-result').style.display = 'none';
+  openModal('server-modal');
+}
+function closeServerModal() { closeModal('server-modal'); }
+
+function saveServerConfig() {
+  serverConfig = {
+    url:   document.getElementById('srv-url').value.trim().replace(/\/$/, ''),
+    token: document.getElementById('srv-token').value.trim()
+  };
+  try { localStorage.setItem(SRV_CONFIG_KEY, JSON.stringify(serverConfig)); } catch(e) {}
+  updateSrvBadge();
+  closeServerModal();
+}
+
+async function testServerConnection() {
+  const url   = document.getElementById('srv-url').value.trim().replace(/\/$/, '');
+  const token = document.getElementById('srv-token').value.trim();
+  const res   = document.getElementById('srv-test-result');
+  const btn   = document.getElementById('srv-test-btn');
+
+  if (!url || !token) {
+    res.style.cssText = 'display:block;background:#ffebee;color:#c00;font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:10px;';
+    res.textContent = 'Please fill in both fields before testing.';
+    return;
+  }
+
+  btn.textContent = 'Testing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch(url + '/ping', { headers: { 'X-Save-Token': token } });
+    if (r.ok) {
+      res.style.cssText = 'display:block;background:#e8f5e9;color:#2e7d32;font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:10px;';
+      res.textContent = '✓ Connected — server is reachable and the token is correct!';
+    } else {
+      res.style.cssText = 'display:block;background:#ffebee;color:#c00;font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:10px;';
+      res.textContent = `✗ Error ${r.status}: ${r.status === 401 ? 'Wrong token.' : 'Server error — check app.py logs.'}`;
+    }
+  } catch(e) {
+    res.style.cssText = 'display:block;background:#ffebee;color:#c00;font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:10px;';
+    res.textContent = `✗ Could not reach server: ${e.message}`;
+  }
+  btn.textContent = 'Test Connection';
+  btn.disabled = false;
+}
+
+function setStatus2(state, msg) {
+  const btn = document.getElementById('server-btn');
+  const lbl = document.getElementById('server-btn-label');
+  if (!btn || !lbl) return;
+  btn.className = 'btn';
+  if (state === 'saving') { btn.classList.add('srv-saving'); lbl.textContent = 'Saving…'; }
+  else if (state === 'ok')    { btn.classList.add('srv-ready'); lbl.textContent = '✓ Saved'; }
+  else if (state === 'error') { btn.classList.add('srv-error'); lbl.textContent = '✗ Error'; }
+  else { updateSrvBadge(); }
+}
+
+function buildExportHTML() {
+  const exportUsers = {};
+  for (const u in data.users) {
+    const { visibility, ...rest } = data.users[u];
+    exportUsers[u] = rest;
+  }
+
+  // Temporarily hide all open modals so they don't bake "display:block" into the saved file
+  const modalEls = Array.from(document.querySelectorAll('.modal-overlay'));
+  const prevDisplays = modalEls.map(m => m.style.display);
+  modalEls.forEach(m => { m.style.display = 'none'; });
+  const srvRes = document.getElementById('srv-test-result');
+  const prevSrvRes = srvRes ? srvRes.style.display : '';
+  if (srvRes) srvRes.style.display = 'none';
+
+  let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+  // Restore modal visibility
+  modalEls.forEach((m, i) => { m.style.display = prevDisplays[i]; });
+  if (srvRes) srvRes.style.display = prevSrvRes;
+  html = html.replace(
+    /(<script[^>]*id="data-script"[^>]*>)([\s\S]*?)(<\/script>)/,
+    `$1\nconst data = ${JSON.stringify({ users: exportUsers }, null, 2)};\n$3`
+  );
+  if (events.length > 0) {
+    html = html.replace(/let events = \[\];/, `let events = ${JSON.stringify(events)};`);
+  }
+  return html;
+}
+
+async function pushToGitHub() {
+  const { url, token } = serverConfig;
+  if (!url || !token) return;
+
+  setStatus2('saving', 'Saving…');
+  try {
+    const res = await fetch(url + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Save-Token': token },
+      body: buildExportHTML()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setStatus2('ok', '✓ Saved');
+    setTimeout(() => updateSrvBadge(), 3000);
+  } catch(e) {
+    setStatus2('error', `✗ ${e.message}`);
+    setTimeout(() => updateSrvBadge(), 6000);
+  }
+}
+
+// ══════════════════════════════════════════
+// EDIT / ADD PERSON MODAL
+// ══════════════════════════════════════════
+let editMode  = 'edit';
+let editState = { originalUsername:'', username:'', colour:'', background_colour:'', code:'', font_url:'', font_size:14, timetable:[] };
+
+function openEditModal() {
+  const hasUsers = Object.keys(data.users).length > 0;
+  if (!hasUsers) { switchToAddMode(); openModal('edit-modal'); return; }
+  editMode = 'edit';
+  document.getElementById('edit-modal-title').textContent        = '✏ Edit Schedule';
+  document.getElementById('edit-selector-row').style.display    = 'flex';
+  document.getElementById('edit-add-preview-row').style.display = 'none';
+  document.getElementById('edit-save-btn').textContent          = 'Save Changes';
+  document.getElementById('edit-delete-btn').style.display      = 'inline-flex';
+  document.getElementById('edit-switch-add-btn').style.display  = 'inline-block';
+  document.getElementById('edit-switch-edit-btn').style.display = 'none';
+  const sel = document.getElementById('edit-user-select');
+  sel.innerHTML = '';
+  for (let u in data.users) { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt); }
+  loadUserForEdit();
+  openModal('edit-modal');
+}
+
+function openAddPersonModal() { switchToAddMode(); openModal('edit-modal'); }
+
+function switchToAddMode() {
+  editMode = 'add';
+  const box = document.querySelector('#edit-modal .modal-box');
+  if (box) { box.style.animation = 'none'; box.offsetHeight; box.style.animation = 'sectionIn 0.18s ease'; }
+  document.getElementById('edit-modal-title').textContent        = '+ Add Person';
+  document.getElementById('edit-selector-row').style.display    = 'none';
+  document.getElementById('edit-add-preview-row').style.display = 'flex';
+  document.getElementById('edit-save-btn').textContent          = 'Add Person';
+  document.getElementById('edit-delete-btn').style.display      = 'none';
+  document.getElementById('edit-switch-add-btn').style.display  = 'none';
+  document.getElementById('edit-switch-edit-btn').style.display = Object.keys(data.users).length > 0 ? 'inline-block' : 'none';
+  editState = { originalUsername:'', username:'', colour:'#336699', background_colour:'#d9eaf7', code:'', font_url:'', font_size:14, timetable:[] };
+  renderEditForm(true);
+}
+
+function switchToEditMode() {
+  const hasUsers = Object.keys(data.users).length > 0;
+  if (!hasUsers) return;
+  editMode = 'edit';
+  const box = document.querySelector('#edit-modal .modal-box');
+  if (box) { box.style.animation = 'none'; box.offsetHeight; box.style.animation = 'sectionIn 0.18s ease'; }
+  document.getElementById('edit-modal-title').textContent        = '✏ Edit Schedule';
+  document.getElementById('edit-selector-row').style.display    = 'flex';
+  document.getElementById('edit-add-preview-row').style.display = 'none';
+  document.getElementById('edit-save-btn').textContent          = 'Save Changes';
+  document.getElementById('edit-delete-btn').style.display      = 'inline-flex';
+  document.getElementById('edit-switch-add-btn').style.display  = 'inline-block';
+  document.getElementById('edit-switch-edit-btn').style.display = 'none';
+  const sel = document.getElementById('edit-user-select');
+  sel.innerHTML = '';
+  for (let u in data.users) { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt); }
+  loadUserForEdit();
+}
+
+function closeEditModal() { closeModal('edit-modal'); }
+
+
+function loadUserForEdit() {
+  const u   = document.getElementById('edit-user-select').value;
+  const usr = data.users[u];
+  editState = {
+    originalUsername: u, username: u,
+    colour: usr.colour, background_colour: usr.background_colour,
+    code: usr.code, font_url: usr.font_url || '', font_size: usr.font_size || 14,
+    timetable: JSON.parse(JSON.stringify(usr.timetable))
+  };
+  renderEditForm(false);
+}
+
+function renderEditForm(clearName) {
+  document.getElementById('edit-username').value   = clearName ? '' : editState.username;
+  document.getElementById('edit-code').value       = editState.code;
+  document.getElementById('edit-colour').value     = editState.colour;
+  document.getElementById('edit-bg-colour').value  = editState.background_colour;
+  document.getElementById('edit-font-url').value   = editState.font_url;
+  document.getElementById('edit-font-size').value  = editState.font_size || 14;
+  document.getElementById('font-preview-area').style.display = 'none';
+  document.getElementById('font-active-badge').style.display = editState.font_url ? 'inline-flex' : 'none';
+  updateColourPreview();
+  renderEntries();
+}
+
+function updateColourPreview() {
+  const fg = document.getElementById('edit-colour').value;
+  const bg = document.getElementById('edit-bg-colour').value;
+  [document.getElementById('edit-colour-preview'), document.getElementById('edit-colour-preview-add')].forEach(p => {
+    if (!p) return;
+    p.style.background = bg;
+    p.style.border = `2px solid ${fg}`;
+  });
+}
+
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
+
+function renderEntries() {
+  let html = '';
+  editState.timetable.forEach((e, i) => {
+    html += `<div class="entry-row">
+      <select style="width:52px" onchange="updateEntry(${i},'day',parseInt(this.value))">
+        ${DAY_NAMES.map((d,k)=>`<option value="${k+1}" ${e.day===k+1?'selected':''}>${d}</option>`).join('')}
+      </select>
+      <input type="text" value="${e.start||''}" placeholder="9.00" style="width:52px" oninput="updateEntry(${i},'start',this.value)">
+      <input type="text" value="${e.end||''}" placeholder="10.00" style="width:52px" oninput="updateEntry(${i},'end',this.value)">
+      <input type="text" value="${escQ(e.code_name||'')}" placeholder="Code" style="width:72px" oninput="updateEntry(${i},'code_name',this.value)">
+      <input type="text" value="${escQ(e.name||'')}" placeholder="Subject name" style="flex:1;min-width:80px" oninput="updateEntry(${i},'name',this.value)">
+      <input type="text" value="${escQ(e.classroom||'')}" placeholder="Room" style="width:110px" oninput="updateEntry(${i},'classroom',this.value)">
+      <label class="entry-chk" style="width:38px"><input type="checkbox" ${e.break?'checked':''} onchange="updateEntry(${i},'break',this.checked)"></label>
+      <label class="entry-chk" style="width:50px"><input type="checkbox" ${e.online?'checked':''} onchange="updateEntry(${i},'online',this.checked)"></label>
+      <button class="del-btn" onclick="deleteEntry(${i})">&#10005;</button>
+    </div>`;
+  });
+  if (!editState.timetable.length) {
+    html = `<div style="text-align:center;padding:16px 0;color:#ccc;font-size:11px;">No entries yet — click below to add one.</div>`;
+  }
+  document.getElementById('edit-entries-list').innerHTML = html;
+}
+
+function escQ(s) { return String(s).replace(/"/g,'&quot;'); }
+
+function updateEntry(i, field, value) {
+  if (field === 'break' || field === 'online') {
+    if (value) editState.timetable[i][field] = true;
+    else delete editState.timetable[i][field];
+  } else {
+    editState.timetable[i][field] = value;
+  }
+}
+
+function addEntry() {
+  editState.timetable.push({day:1, start:'9.00', end:'10.00', code_name:'', name:'', classroom:''});
+  renderEntries();
+  const list = document.getElementById('edit-entries-list');
+  list.scrollTop = list.scrollHeight;
+}
+
+function deleteEntry(i) {
+  editState.timetable.splice(i, 1);
+  renderEntries();
+}
+
+function saveEdit() {
+  const nameInput = document.getElementById('edit-username');
+  const newName   = nameInput.value.trim();
+  const colour    = document.getElementById('edit-colour').value;
+  const bgCol     = document.getElementById('edit-bg-colour').value;
+  const code      = document.getElementById('edit-code').value.trim();
+  const fontUrl   = document.getElementById('edit-font-url').value.trim();
+  const fontSize  = parseInt(document.getElementById('edit-font-size').value, 10) || 14;
+
+  if (!newName) {
+    nameInput.classList.add('shake');
+    nameInput.focus();
+    setTimeout(() => nameInput.classList.remove('shake'), 350);
+    return;
+  }
+
+  if (editMode === 'add') {
+    if (data.users[newName]) {
+      nameInput.style.borderColor = '#f55';
+      nameInput.focus();
+      setTimeout(() => nameInput.style.borderColor = '', 1500);
+      return;
+    }
+    data.users[newName] = { colour, background_colour: bgCol, code, font_url: fontUrl, font_size: fontSize, timetable: editState.timetable, visibility: true };
+  } else {
+    const old     = editState.originalUsername;
+    const vis     = data.users[old].visibility;
+    const userData = { colour, background_colour: bgCol, code, font_url: fontUrl, font_size: fontSize, timetable: editState.timetable, visibility: vis };
+    if (newName !== old) {
+      if (data.users[newName]) {
+        nameInput.style.borderColor = '#f55';
+        nameInput.focus();
+        setTimeout(() => nameInput.style.borderColor = '', 1500);
+        return;
+      }
+      // Transfer font slot to new name if no URL change
+      if (loadedFonts[old]) { delete loadedFonts[old]; }
+      delete data.users[old];
+    }
+    data.users[newName] = userData;
+  }
+
+  pushToGitHub();
+  closeEditModal();
+  updateToolbar();
+  updateColour();
+  updateTimetable();
+
+  // Load/reload font in background, then re-render
+  loadUserFont(newName, fontUrl).then(() => {
+    updateColour();
+    updateTimetable();
+  });
+}
+
+function deletePerson() {
+  const u = document.getElementById('edit-user-select').value;
+  if (!confirm(`Remove ${u} from the timetable?`)) return;
+  delete loadedFonts[u];
+  delete data.users[u];
+  pushToGitHub();
+  closeEditModal();
+  updateToolbar();
+  updateColour();
+  updateTimetable();
+}
+
+// ══════════════════════════════════════════
+// EVENTS
+// ══════════════════════════════════════════
+let events = [];
+
+function openEventsModal() { renderEventsList(); openModal('events-modal'); }
+function closeEventsModal() { closeModal('events-modal'); }
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+}
+
+function renderEventsList() {
+  const el  = document.getElementById('events-list');
+  const now = new Date();
+
+  // Filter out events whose end (or start) time has passed
+  const upcoming = events.filter(ev => {
+    if (!ev.date) return true;
+    const endRef = ev.end_time
+      ? ev.date + 'T' + ev.end_time
+      : ev.time ? ev.date + 'T' + ev.time : ev.date + 'T23:59';
+    return new Date(endRef) >= now;
+  });
+
+  if (!upcoming.length) {
+    el.innerHTML = `<div class="event-empty">No upcoming events. Add one below.</div>`;
+    return;
+  }
+
+  const sorted = [...upcoming].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  el.innerHTML = sorted.map(ev => {
+    const idx       = events.indexOf(ev);
+    const names     = ev.interested || [];
+    const dateStr   = ev.date
+      ? new Date(ev.date + 'T00:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short', year:'numeric'})
+      : '—';
+    const timeRange = ev.time
+      ? (ev.end_time ? `${fmtTime(ev.time)} – ${fmtTime(ev.end_time)}` : fmtTime(ev.time))
+      : '';
+    const namesHTML = names.length
+      ? names.map((n, ni) => `<span class="interest-name">${escQ(n)}<button class="interest-remove" onclick="removeInterest(${idx},${ni})" title="Remove">×</button></span>`).join('')
+      : '';
+
+    return `<div class="event-card" style="border-left-color:${ev.colour}">
+      <div class="event-dot" style="background:${ev.colour}"></div>
+      <div class="event-card-body">
+        <div class="event-card-title">${escQ(ev.title)}</div>
+        <div class="event-card-date">${dateStr}${timeRange ? ' · ' + timeRange : ''}</div>
+        ${ev.note ? `<div class="event-card-note">${escQ(ev.note)}</div>` : ''}
+        <div class="interest-row">
+          <span class="interest-label">👥 Interested:</span>
+          ${namesHTML}
+          <button class="interest-add-btn" id="iab-${idx}" onclick="showInterestInput(${idx})">+ Add</button>
+          <span class="interest-input-wrap" id="iw-${idx}">
+            <input class="interest-input" id="ii-${idx}" placeholder="Your name…" maxlength="30"
+              onkeydown="if(event.key==='Enter')commitInterest(${idx});else if(event.key==='Escape')cancelInterest(${idx})">
+            <button class="interest-ok" onclick="commitInterest(${idx})">✓</button>
+            <button class="interest-cancel" onclick="cancelInterest(${idx})">✕</button>
+          </span>
+        </div>
+      </div>
+      <button class="del-btn" style="flex-shrink:0;align-self:flex-start;" onclick="deleteEvent(${idx})">&#10005;</button>
+    </div>`;
+  }).join('');
+}
+
+function showInterestInput(idx) {
+  document.getElementById('iab-' + idx).style.display = 'none';
+  const wrap = document.getElementById('iw-' + idx);
+  wrap.classList.add('show');
+  document.getElementById('ii-' + idx).focus();
+}
+function cancelInterest(idx) {
+  document.getElementById('iw-' + idx).classList.remove('show');
+  document.getElementById('iab-' + idx).style.display = '';
+}
+function commitInterest(idx) {
+  const name = (document.getElementById('ii-' + idx).value || '').trim();
+  if (!name) { cancelInterest(idx); return; }
+  if (!events[idx].interested) events[idx].interested = [];
+  events[idx].interested.push(name);
+  pushToGitHub();
+  renderEventsList();
+}
+function removeInterest(idx, ni) {
+  events[idx].interested.splice(ni, 1);
+  pushToGitHub();
+  renderEventsList();
+}
+
+function addEvent() {
+  const title    = document.getElementById('ev-title').value.trim();
+  const date     = document.getElementById('ev-date').value;
+  const time     = document.getElementById('ev-time').value;
+  const end_time = document.getElementById('ev-end-time').value;
+  const colour   = document.getElementById('ev-colour').value;
+  const note     = document.getElementById('ev-note').value.trim();
+  if (!title) {
+    const t = document.getElementById('ev-title');
+    t.classList.add('shake');
+    t.focus();
+    setTimeout(() => t.classList.remove('shake'), 350);
+    return;
+  }
+  events.push({ title, date, time, end_time, colour, note, interested: [] });
+  document.getElementById('ev-title').value    = '';
+  document.getElementById('ev-date').value     = '';
+  document.getElementById('ev-time').value     = '';
+  document.getElementById('ev-end-time').value = '';
+  document.getElementById('ev-note').value     = '';
+  pushToGitHub();
+  renderEventsList();
+}
+function deleteEvent(i) {
+  events.splice(i, 1);
+  pushToGitHub();
+  renderEventsList();
+}
+
+// ── Init ──
+loadDarkMode();
+loadServerConfig();
+updateToolbar();
+updateColour();
+updateTimetable();
+
+// Load all custom fonts, then re-render with them applied
+loadAllFonts().then(() => {
+  updateColour();
+  updateTimetable();
+});
+</script>
+
+
+
+<div id="give-freely-root-ejkiikneibegknkgimmihdpcbcedgmpo" class="give-freely-root" data-extension-id="ejkiikneibegknkgimmihdpcbcedgmpo" data-extension-name="Volume Booster" style="display: block;"></div></body></html>
